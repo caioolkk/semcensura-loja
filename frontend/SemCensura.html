@@ -1,0 +1,1705 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sem Censura - Loja de Produtos Sensuais</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://sdk.mercadopago.com/js/v2"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    /* ================== BARRA DE PESQUISA ================== */
+    .search-suggestions {
+      position: absolute;
+     top: 100%;
+      left: 0;
+      width: 100%;
+      background: white;
+      border: 1px solid #ddd;
+      border-top: none;
+      max-height: 200px;
+     overflow-y: auto;
+      border-radius: 0 0 8px 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      z-index: 1000;
+     display: none;
+    }
+
+    .search-suggestion-item {
+      padding: 10px 15px;
+      cursor: pointer;
+      border-bottom: 1px solid #f1f1f1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+     font-size: 0.9rem;
+    }
+
+    .search-suggestion-item:hover {
+      background-color: #f9f9f9;
+    }
+
+    .search-suggestion-item img {
+      width: 40px;
+      height: 40px;
+      object-fit: cover;
+      border-radius: 6px;
+    }
+    .search-container {
+      position: absolute;
+      top: 35px;
+      right: 190px;
+      cursor: pointer;
+      z-index: 1001;
+    }
+    .search-icon {
+      font-size: 1.8rem;
+      color: white;
+      transition: color 0.3s;
+    }
+    .search-icon:hover {
+     color: #ff69b4;
+    }
+
+    .search-bar {
+      position: fixed;
+      top: 70px;
+      right: 20px;
+      background: white;
+      border-radius: 30px;
+      padding: 5px 15px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      width: 280px;
+      max-width: 90%;
+    }
+    .search-bar input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 0.95rem;
+      padding: 8px 0;
+      background: transparent;
+    }
+    .search-close {
+      color: #999;
+      cursor: pointer;
+      margin-left: 10px;
+      font-size: 1.2rem;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Poppins', sans-serif;
+      background-color: #fafafa;
+      color: #333;
+      padding-top: 140px;
+    }
+    /* ================== CABEÇALHO FIXO ================ */
+    header {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      background-color: #5d3a5a;
+      color: white;
+      padding: 15px 20px;
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 2.8rem;
+      font-weight: 700;
+      text-align: center;
+      color: #ff4081;
+      letter-spacing: 1px;
+    }
+    header p {
+      text-align: center;
+      font-size: 0.9rem;
+      opacity: 0.9;
+      margin-top: 5px;
+    }
+    nav {
+      margin-top: 15px;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    nav a {
+      color: #fff;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 1rem;
+      padding: 8px 16px;
+      border-radius: 30px;
+      background-color: rgba(255, 255, 255, 0.15);
+      transition: all 0.3s ease;
+    }
+    nav a:hover,
+    nav a.active {
+      background-color: #ff4081;
+      color: white;
+      transform: scale(1.05);
+    }
+    /* ================== ÍCONE DE CADASTRO ALINHADO AO CARRINHO ================== */
+    .auth-container {
+      position: absolute;
+      top: 20px;
+      right: 80px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      z-index: 1001;
+    }
+
+    .auth-icon-circle {
+      width: 40px;
+      height: 40px;
+      background-color: white;
+      border: 2px solid #e91e63;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: all 0.3s ease;
+    }
+    .auth-icon-circle i {
+      color: #e91e63;
+      font-size: 1.4rem;
+    }
+    .auth-icon-circle:hover {
+      background-color: #e91e63;
+    }
+    .auth-icon-circle:hover i {
+      color: white;
+    }
+    .auth-label {
+      margin-top: 4px;
+      font-size: 0.75rem;
+      color: #ffffff;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .auth-label:hover {
+      color: #e91e63;
+    }
+    /* Ícone do carrinho no header */
+    .cart-icon {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      font-size: 1.8rem;
+      color: #fff;
+      cursor: pointer;
+      transition: color 0.3s;
+    }
+    .cart-icon:hover {
+      color: #ff69b4;
+    }
+    .cart-count {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background-color: #ff4081;
+      color: white;
+      font-size: 0.75rem;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    /* ================== SEÇÃO DE PRODUTOS ================ */
+    .section {
+      padding: 80px 20px 60px;
+      max-width: 1200px;
+      margin: auto;
+    }
+    .section h2 {
+      font-size: 2.5rem;
+      text-align: center;
+      margin-bottom: 40px;
+      color: #5d3a5a;
+      font-weight: 600;
+    }
+    .carousel-wrapper {
+      position: relative;
+    }
+    /* ================== CAROUSEL DE PRODUTOS ================== */
+    .product-carousel {
+      display: flex;
+      overflow-x: auto; /* Permite rolagem horizontal */
+      gap: 15px; /* Espaço entre os produtos */
+      scroll-behavior: smooth; /* Rollover suave */
+    }
+
+    .product {
+      flex: 0 0 calc(20% - 15px); /* Cada produto ocupa 20% da largura, menos o espaçamento */
+      background-color: #fff;
+      border-radius: 14px;
+      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+      padding: 15px;
+      text-align: center;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      cursor: pointer;
+    }
+
+    .product:hover {
+      transform: translateY(-10px) scale(1.03);
+      box-shadow: 0 12px 25px rgba(92, 39, 68, 0.25);
+    }
+
+    .product img {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      border-radius: 10px;
+      margin-bottom: 12px;
+      transition: transform 0.3s ease;
+    }
+
+    .product:hover img {
+      transform: scale(1.08);
+    }
+    .product h3 {
+      font-size: 1rem;
+      margin: 8px 0;
+      color: #333;
+      font-weight: 500;
+      min-height: 44px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .price-pix {
+      color: #2e7d32;
+      font-weight: 700;
+      font-size: 1.1rem;
+      margin: 5px 0;
+    }
+    .price-original {
+      color: #777;
+      font-weight: 500;
+      text-decoration: line-through;
+      margin: 2px 0;
+      font-size: 0.9rem;
+    }
+    .promo-badge {
+      display: inline-block;
+      background-color: #2e7d32;
+      color: white;
+      font-size: 0.8rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin: 5px 0;
+      font-weight: 600;
+    }
+    .btn-comprar {
+      background-color: #e91e63;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 25px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      transition: background-color 0.3s ease;
+    }
+    .btn-comprar:hover {
+      background-color: #c2185b;
+    }
+    /* Setas do carousel */
+    .arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 40px;
+      height: 40px;
+      background-color: rgba(93, 58, 90, 0.8);
+      color: white;
+      font-size: 20px;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      z-index: 10;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    .arrow:hover {
+      background-color: #5d3a5a;
+    }
+    .arrow.left {
+      left: 10px;
+    }
+    .arrow.right {
+      right: 10px;
+    }
+    /* Indicadores de página (dots) */
+    .dots {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      background: #ccc;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .dot.active {
+      background: #e91e63;
+    }
+    /* Modal do carrinho */
+    .cart-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      justify-content: flex-end;
+    }
+    .cart-content {
+      width: 380px;
+      max-width: 90%;
+      background-color: white;
+      height: 100%;
+      padding: 20px;
+      box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+      overflow-y: auto;
+      position: relative;
+    }
+    .cart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    .cart-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #888;
+    }
+    .cart-item {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+      padding-bottom: 15px;
+      border-bottom: 1px dashed #eee;
+    }
+    .cart-item img {
+      width: 60px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+    .cart-item-info {
+      flex: 1;
+      text-align: left;
+    }
+    .cart-item-price {
+      font-weight: 700;
+      color: #e91e63;
+    }
+    .quantity-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .quantity-btn {
+      width: 26px;
+      height: 26px;
+      background-color: #f1f1f1;
+      border: 1px solid #ddd;
+      border-radius: 50%;
+      font-size: 1rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .quantity-btn:hover {
+      background-color: #e0e0e0;
+    }
+    .quantity-value {
+      font-size: 1rem;
+      font-weight: 500;
+      min-width: 20px;
+      text-align: center;
+    }
+    .remove-btn {
+      background: none;
+      border: none;
+      font-size: 1.1rem;
+      color: #999;
+      cursor: pointer;
+      margin-left: 10px;
+      transition: color 0.3s;
+    }
+    .remove-btn:hover {
+      color: #e91e63;
+    }
+    .cart-footer {
+      position: sticky;
+      bottom: 0;
+      background: white;
+      padding: 15px 0;
+      border-top: 2px solid #eee;
+      margin-top: 20px;
+    }
+    .cart-total {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #5d3a5a;
+    }
+    .btn-finalizar {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      background-color: #e91e63;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+    .btn-finalizar:hover {
+      background-color: #c2185b;
+    }
+    /* Notificação (toast) */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #4caf50;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      z-index: 3000;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .toast.show {
+      opacity: 1;
+    }
+    /* ================== MODAL DE DESCRIÇÃO DO PRODUTO ================ */
+    .product-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background-color: white;
+      padding: 20px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      position: relative;
+    }
+    .modal-close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 1.5rem;
+      color: #888;
+      cursor: pointer;
+      background: none;
+      border: none;
+    }
+    .modal-img {
+      width: 100%;
+      max-height: 300px;
+      object-fit: cover;
+      border-radius: 10px;
+      margin-bottom: 15px;
+    }
+    .modal-title {
+      font-size: 1.5rem;
+      color: #5d3a5a;
+      margin-bottom: 10px;
+    }
+    .modal-desc {
+      font-size: 1rem;
+      line-height: 1.6;
+      color: #555;
+      margin-bottom: 15px;
+    }
+    .modal-price {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #2e7d32;
+    }
+    .modal-btn-comprar {
+      background-color: #e91e63;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 25px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 15px;
+      transition: background-color 0.3s ease;
+    }
+    .modal-btn-comprar:hover {
+      background-color: #c2185b;
+    }
+    /* ================== MODAL DE LOGIN/CADASTRO ================== */
+    .auth-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+    }
+    .auth-modal-content {
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 400px;
+      position: relative;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    .auth-close {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #888;
+    }
+    .auth-tabs {
+      display: flex;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid #eee;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      background: none;
+      border: none;
+      font-size: 1rem;
+      cursor: pointer;
+      color: #777;
+    }
+    .tab-btn.active {
+      color: #e91e63;
+      border-bottom: 2px solid #e91e63;
+      font-weight: 600;
+    }
+    .auth-form input {
+      width: 100%;
+      padding: 0.7rem;
+      margin: 0.5rem 0;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+    }
+    .auth-form button {
+      width: 100%;
+      padding: 0.7rem;
+      background: #e91e63;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      margin-top: 1rem;
+      cursor: pointer;
+    }
+    /* ================== MODAL DE ENTREGA SIGILOSA (FAQ) ================== */
+    .faq-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 3000;
+    }
+    .faq-content {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 500px;
+    }
+    .faq-message {
+      background: #f1f1f1;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+    .faq-form textarea {
+      width: 100%;
+      height: 100px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      resize: none;
+    }
+    .faq-form button {
+      padding: 10px 20px;
+      background: #e91e63;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    /* Responsividade */
+    @media (max-width: 1024px) {
+      .product {
+        flex: 0 0 calc(20% - 15px);
+      }
+    }
+    @media (max-width: 768px) {
+      body {
+        padding-top: 180px;
+      }
+      header h1 {
+        font-size: 2.2rem;
+      }
+      header p {
+        font-size: 0.8rem;
+      }
+      nav a {
+        font-size: 0.9rem;
+        padding: 6px 12px;
+      }
+      .section h2 {
+        font-size: 2rem;
+      }
+      .product {
+        flex: 0 0 calc(45% - 15px);
+        margin-bottom: 10px;
+      }
+      .arrow {
+        display: flex;
+      }
+      .dots {
+        display: flex;
+      }
+      .cart-content {
+        width: 100%;
+      }
+    }
+    @media (max-width: 480px) {
+      .product {
+        flex: 0 0 calc(90% - 15px);
+      }
+      .product-carousel {
+        gap: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ================== CABEÇALHO COM CARRINHO E CADASTRO ================ -->
+  <header id="header">
+    <h1>Sem Censura</h1>
+    <p>Produtos Sensuais com Discrição e Qualidade</p>
+    <!-- Ícone de Login/Cadastro -->
+    <div class="auth-container" onclick="openAuthModal()">
+      <div class="auth-icon-circle">
+        <i class="fas fa-user"></i>
+      </div>
+      <span class="auth-label">Login/Cadastro</span>
+    </div>
+    <div class="search-container">
+      <i class="fas fa-search search-icon" onclick="toggleSearchBar()"></i>
+    </div>
+    <!-- Ícone do carrinho -->
+    <div class="cart-icon" onclick="toggleCart()">
+      🛒
+      <span class="cart-count" id="cart-count">0</span>
+    </div>
+    <!-- Menu de categorias -->
+    <nav>
+      <a href="#paraela" class="nav-link">Para Ela</a>
+      <a href="#paraele" class="nav-link">Para Ele</a>
+      <a href="#casal" class="nav-link">Acessórios & Jogos</a>
+    </nav>
+  </header>
+    
+    <!-- ================== BARRA DE PESQUISA (SUGESTÕES) ================== -->
+    <div class="search-bar" id="search-bar" style="display: none;">
+      <input type="text" id="search-input" placeholder="Pesquise produtos...">
+      <i class="fas fa-times search-close" onclick="closeSearchBar()"></i>
+      <div class="search-suggestions" id="search-suggestions"></div>
+    </div>
+  <!-- ================== MODAL DE LOGIN/CADASTRO ================== -->
+  <div class="auth-modal" id="auth-modal" style="display: none;">
+    <div class="auth-modal-content">
+      <span class="auth-close" onclick="closeAuthModal()">&times;</span>
+      <div class="auth-tabs">
+        <button class="tab-btn active" onclick="switchAuthTab('login')">Login</button>
+        <button class="tab-btn" onclick="switchAuthTab('register')">Cadastrar</button>
+      </div>
+
+      <!-- LOGIN -->
+      <form id="login-form" class="auth-form">
+        <input type="email" placeholder="Email" required>
+        <input type="password" placeholder="Senha" required>
+        <button type="submit">Entrar</button>
+      </form>
+
+      <!-- CADASTRO -->
+      <form id="register-form" class="auth-form" style="display: none;">
+        <input type="text" placeholder="Nome Completo" required>
+        <input type="email" placeholder="Email" required>
+        <input type="tel" placeholder="Telefone (opcional)">
+        <input type="password" placeholder="Senha" required>
+        <button type="submit">Cadastrar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================== MODAL DO CARRINHO ================== -->
+  <div class="cart-modal" id="cart-modal" onclick="closeCart(event)">
+    <div class="cart-content" onclick="event.stopPropagation()">
+      <div class="cart-header">
+        <h3>Seu Carrinho</h3>
+        <button class="cart-close" onclick="closeCart(event)">✕</button>
+      </div>
+      <div id="cart-items">
+        <p style="color: #888; text-align: center;">Seu carrinho está vazio.</p>
+      </div>
+      <div class="cart-footer">
+        <div class="cart-total">Total: R$ <span id="cart-total">0,00</span></div>
+        <input type="text" id="codigo-indicacao" class="contact-input" placeholder="Código de indicação (opcional)">
+        <label>
+          <input type="checkbox" id="entrega-sigilosa"> Entrega Sigilosa - Combinar entrega
+        </label>
+        <button class="btn-finalizar" onclick="handleCheckout()">Finalizar Compra</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================== MODAL DE ENTREGA SIGILOSA (FAQ) ================== -->
+  <div class="faq-modal" id="faq-modal" style="display: none;">
+    <div class="faq-content">
+      <div class="faq-header">
+        <h3>Combinar Entrega</h3>
+        <button class="faq-close" onclick="closeFaqModal()">&times;</button>
+      </div>
+      <div class="faq-message">
+        Olá! Obrigado pela sua compra. Como optou por entrega sigilosa, por favor, compartilhe seu endereço completo para combinarmos o valor do frete (se aplicável) e a melhor forma de entrega com total discrição.
+      </div>
+      <form class="faq-form" id="faq-form">
+        <textarea id="faq-message" placeholder="Escreva seu endereço e detalhes aqui..."></textarea>
+        <button type="submit">Enviar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================== MODAL DE DESCRIÇÃO DO PRODUTO ================== -->
+  <div class="product-modal" id="product-modal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeProductModal()">✕</button>
+      <img id="modal-img" class="modal-img" src="" alt="Produto">
+      <h3 id="modal-title" class="modal-title">Nome do Produto</h3>
+      <p id="modal-desc" class="modal-desc">Descrição do produto aqui.</p>
+      <div id="modal-price" class="modal-price">R$ 0,00</div>
+      <button id="modal-btn-add" class="modal-btn-comprar" onclick="addFromModal()">Adicionar ao Carrinho</button>
+    </div>
+  </div>
+
+  <!-- ================== NOTIFICAÇÃO ================== -->
+  <div class="toast" id="toast">Produto adicionado ao carrinho!</div>
+
+  <!-- ================== SEÇÃO PARA ELA ================== -->
+  <section class="section" id="paraela">
+    <h2>Para Ela</h2>
+    <div class="carousel-wrapper">
+      <button class="arrow left" onclick="scrollCarousel(this, 'left')">&#10094;</button>
+      <div class="product-carousel">
+        <div class="product" data-name="Sugador Clitoriano" data-price="65.00" onclick="showProductDescription(this)">
+          <img src="https://cdn.awsli.com.br/600x450/2695/2695451/produto/250358452/sugador-clitoriano-6756-l26t8hp3od.jpg" alt="Sugador Clitoriano">
+          <h3>Sugador Clitoriano</h3>
+          <div class="price-pix">R$ 50,00</div>
+          <div class="price-original">De R$ 65,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Orgastic" data-price="169.00" onclick="showProductDescription(this)">
+          <img src="https://m.media-amazon.com/images/I/41o3jTvnkbL.jpg_BO30,255,255,255_UF900,850_SR1910,1000,0,C_QL100_.jpg" alt="Orgastic">
+          <h3>Orgastic</h3>
+          <div class="price-pix">R$ 130,00</div>
+          <div class="price-original">De R$ 169,29</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Desodorante Soft Love Skin Ice" data-price="19.50" onclick="showProductDescription(this)">
+          <img src="https://dcdn-us.mitiendanube.com/stores/006/176/224/products/img_2320-c91a23e7218552649f17465402358679-1024-1024.jpeg" alt="Desodorante Soft Love">
+          <h3>Desodorante Soft Love Skin Ice</h3>
+          <div class="price-pix">R$ 15,00</div>
+          <div class="price-original">De R$ 19,50</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Perfume Feminino Tutti Fruitt" data-price="26.00" onclick="showProductDescription(this)">
+          <img src="https://cdn.dooca.store/172728/products/5onvemzlpwvqvf0xwlhogwpmbq1mkj8fhcwr_450x600.png?v=1750690827&webp=0" alt="Perfume Feminino">
+          <h3>Perfume Feminino Tutti Fruitt</h3>
+          <div class="price-pix">R$ 20,00</div>
+          <div class="price-original">De R$ 26,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Tu Xera Hidratante Virilha Beijável" data-price="45.50" onclick="showProductDescription(this)">
+          <img src="https://a-static.mlcdn.com.br/1500x1500/tu-xera-calda-hidratante-virilha-305ml-loka-sensacao/bocanalingua/2f000d12115e11f0b73442010a480843/e594e44c50aafcc22122a7b1249e7701.jpeg" alt="Tu Xera">
+          <h3>Tu Xera Hidratante Virilha Beijável</h3>
+          <div class="price-pix">R$ 35,00</div>
+          <div class="price-original">De R$ 45,50</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Vibrador Golfinho Toque Aveludado" data-price="45.50" onclick="showProductDescription(this)">
+          <img src="https://a-static.mlcdn.com.br/1500x1500/vibrador-golfinho-toque-aveludado-vipmix/lumesexy/da6273c8d08511eda4954201ac185033/b2ca0df2e25d7642e269de1340c87cf6.jpeg" alt="Vibrador Golfinho">
+          <h3>Vibrador Golfinho Toque Aveludado</h3>
+          <div class="price-pix">R$ 35,00</div>
+          <div class="price-original">De R$ 45,50</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        
+          </div>
+        <div class="product" data-name="Vibrador Ponto G Duplo Motor 17cm" data-price="156.00" onclick="showProductDescription(this)">
+          <img src="https://static.cdnlive.com.br/uploads/487/produto/16995629866012_zoom.jpg" alt="Vibrador Ponto G">
+          <h3>Vibrador Ponto G Duplo Motor 17cm</h3>
+          <div class="price-pix">R$ 120,00</div>
+          <div class="price-original">De R$ 156,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Sabonete Íntimo Aromatizado Uva e Babalou" data-price="15.60" onclick="showProductDescription(this)">
+          <img src="https://us-east-1-prod-treinta-assets-bucket.s3.amazonaws.com/rn_image_picker_lib_temp_efebbf2a-4690-4762-9b94-7930dc225caf.jpg.jpeg" alt="Sabonete Íntimo Uva e Babalou">
+          <h3>Sabonete Íntimo Aromatizado Uva e Babalou</h3>
+          <div class="price-pix">R$ 12,00</div>
+          <div class="price-original">De R$ 15,60</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Bullet Mini Cápsula" data-price="32.50" onclick="showProductDescription(this)">
+          <img src="https://us-east-1-prod-treinta-assets-bucket.s3.amazonaws.com/stores/63666139-3135-5336-a365-623962343464/product_photos/1644701389399.png" alt="Bullet Mini Cápsula">
+          <h3>Bullet Mini Cápsula</h3>
+          <div class="price-pix">R$ 25,00</div>
+          <div class="price-original">De R$ 32,50</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Bolinhas Tailandesas" data-price="39.00" onclick="showProductDescription(this)">
+          <img src="https://us-east-1-prod-treinta-assets-bucket.s3.amazonaws.com/stores/63666139-3135-5336-a365-623962343464/product_photos/1644457394938.png" alt="Bolinhas Tailandesas">
+          <h3>Bolinhas Tailandesas</h3>
+          <div class="price-pix">R$ 30,00</div>
+          <div class="price-original">De R$ 39,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Cinta P/2 Proteses DP Invertida La Pimienta" data-price="91.00" onclick="showProductDescription(this)">
+          <img src="https://m.media-amazon.com/images/I/31fyXJcABjL.jpg_BO30,255,255,255_UF900,850_SR1910,1000,0,C_QL100_.jpg" alt="CINTA P/2 PROTESES DP INVERTIDA LA PIMIENTA">
+          <h3>CINTA P/2 PROTESES DP INVERTIDA LA PIMIENTA</h3>
+          <div class="price-pix">R$ 70,00</div>
+          <div class="price-original">De R$ 91,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Cinta Peniana" data-price="78.00" onclick="showProductDescription(this)">
+          <img src="https://us-east-1-prod-treinta-assets-bucket.s3.amazonaws.com/stores/63666139-3135-5336-a365-623962343464/product_photos/1656434717334.png" alt="Cinta Peniana">
+          <h3>Cinta Peniana</h3>
+          <div class="price-pix">R$ 60,00</div>
+          <div class="price-original">De R$ 78,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Gel Térmico 8ml" data-price="13.00" onclick="showProductDescription(this)">
+          <img src="https://http2.mlstatic.com/D_NQ_NP_803152-MLU74316946914_022024-O.webp" alt="Gel Térmico 8ml">
+          <h3>Gel Térmico 8ml</h3>
+          <div class="price-pix">R$ 10,00</div>
+          <div class="price-original">De R$ 13,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Lubrificante Beijavel Bubbalove Menta" data-price="19.50" onclick="showProductDescription(this)">
+          <img src="https://carrefourbr.vtexassets.com/arquivos/ids/163391978/cb76fe7ceb1041d0a0795ae693ebd9ff.jpg?v=638548330501030000" alt="Lubrificante Beijavel Bubbalove Menta">
+          <h3>Lubrificante Beijavel Bubbalove Menta</h3>
+          <div class="price-pix">R$ 15,00</div>
+          <div class="price-original">De R$ 19,50</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Plug Anal G" data-price="71.50" onclick="showProductDescription(this)">
+          <img src="https://us-east-1-prod-treinta-assets-bucket.s3.amazonaws.com/rn_image_picker_lib_temp_e051754c-4604-459f-948e-a9cca531e15b.jpg.jpeg" alt="Plug Anal G">
+          <h3>Plug Anal G</h3>
+          <div class="price-pix">R$ 55,00</div>
+          <div class="price-original">De R$ 71,50</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Plug Anal M" data-price="65.00" onclick="showProductDescription(this)">
+          <img src="https://cdn.awsli.com.br/1388/1388473/produto/2381432075dcfb025c9.jpg" alt="Plug Anal M">
+          <h3>Plug Anal M</h3>
+          <div class="price-pix">R$ 50,00</div>
+          <div class="price-original">De R$ 65,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Plug Anal P" data-price="58.50" onclick="showProductDescription(this)">
+          <img src="https://acdn-us.mitiendanube.com/stores/001/532/535/products/copia-de-copia-de-copia-de-copia-de-copia-de-copia-de-copia-de-copia-de-design-sem-nome-21-a31d6f008b0924e7cc16682883752167-1024-1024.png" alt="Plug Anal P">
+          <h3>Plug Anal P</h3>
+          <div class="price-pix">R$ 45,00</div>
+          <div class="price-original">De R$ 58,50</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Plug Anal PP" data-price="52.00" onclick="showProductDescription(this)">
+          <img src="https://images.tcdn.com.br/img/img_prod/988175/mini_plug_anal_pp_metal_brilhante_6360_2_ff0ceb0c07b97243469ea7f9122e37c0.jpg" alt="Plug Anal PP">
+          <h3>Plug Anal PP</h3>
+          <div class="price-pix">R$ 40,00</div>
+          <div class="price-original">De R$ 52,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Penis Realístico" data-price="65.00" onclick="showProductDescription(this)">
+          <img src="https://us-east-1-prod-treinta-assets-bucket.s3.amazonaws.com/rn_image_picker_lib_temp_7d12d86f-d8f5-4941-b1c4-2595a36df1e7.jpg.jpeg" alt="Penis Realístico">
+          <h3>Pênis Realístico</h3>
+          <div class="price-pix">R$ 50,00</div>
+          <div class="price-original">De R$ 65,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Protese 16,7 x 3,7cm" data-price="143.00" onclick="showProductDescription(this)">
+          <img src="https://m.media-amazon.com/images/I/516uW8KmNVL._UF350,350_QL50_.jpg" alt="Protese 16,7 x 3,7cm">
+          <h3>Protese 16,7 x 3,7cm</h3>
+          <div class="price-pix">R$ 110,00</div>
+          <div class="price-original">De R$ 143,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Protese BEGE 17 x 8cm" data-price="169.00" onclick="showProductDescription(this)">
+          <img src="https://m.media-amazon.com/images/I/41LMrDUCTFL._UF350,350_QL80_.jpg" alt="Protese BEGE 17 x 8cm">
+          <h3>Protese BEGE 17 x 8cm</h3>
+          <div class="price-pix">R$ 130,00</div>
+          <div class="price-original">De R$ 169,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Protese 18,4 x 4,3cm" data-price="195.00" onclick="showProductDescription(this)">
+          <img src="https://arquivos.facilzap.app.br/produtos/688936eb960a0_sNEQMJ6P.jpg.webp" alt="Protese 18,4 x 4,3cm">
+          <h3>Protese 18,4 x 4,3cm</h3>
+          <div class="price-pix">R$ 150,00</div>
+          <div class="price-original">De R$ 195,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Vibrador Porquinho" data-price="84.50" onclick="showProductDescription(this)">
+          <img src="https://acdn-us.mitiendanube.com/stores/001/538/031/products/po-f031bfa338397f71a917119994502538-1024-1024.jpg" alt="Vibrador Porquinho">
+          <h3>Vibrador Porquinho</h3>
+          <div class="price-pix">R$ 65,00</div>
+          <div class="price-original">De R$ 84,50</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Vibration Power Doce De Leite" data-price="130.00" onclick="showProductDescription(this)">
+          <img src="https://us-east-1-prod-treinta-assets-bucket.s3.amazonaws.com/rn_image_picker_lib_temp_5765cae5-0bf2-42d7-9259-535a0e8dadc2.jpg.jpeg" alt="Vibration Power Doce De Leite">
+          <h3>Vibration Power Doce De Leite</h3>
+          <div class="price-pix">R$ 100,00</div>
+          <div class="price-original">De R$ 130,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+      </div>
+      <button class="arrow right" onclick="scrollCarousel(this, 'right')">&#10095;</button>
+      <div class="dots"></div>
+      </div>
+    
+  </section>
+
+  <!-- ================== SEÇÃO PARA ELE ================== -->
+  <section class="section" id="paraele">
+    <h2>Para Ele</h2>
+    <div class="carousel-wrapper">
+      <button class="arrow left" onclick="scrollCarousel(this, 'left')">&#10094;</button>
+      <div class="product-carousel">
+        <div class="product" data-name="Super Love - Potencializador Masculino" data-price="50.00" onclick="showProductDescription(this)">
+          <img src="https://us-east-1-prod-treinta-assets-bucket.s3.amazonaws.com/rn_image_picker_lib_temp_4ac33332-41dc-460b-8200-4cdc45a1b260.webp.webp" alt="Potencializador Masculino">
+          <h3>Super Love - Potencializador Masculino</h3>
+          <div class="price-pix">R$ 45,00</div>
+          <div class="price-original">De R$ 71,43</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Anel Peniano Com Vibro" data-price="13.00" onclick="showProductDescription(this)">
+          <img src="https://us-east-1-prod-treinta-assets-bucket.s3.amazonaws.com/stores/63666139-3135-5336-a365-623962343464/product_photos/1644447307667.png" alt="Anel Peniano Com Vibro">
+          <h3>Anel Peniano Com Vibro</h3>
+          <div class="price-pix">R$ 10,00</div>
+          <div class="price-original">De R$ 13,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Anel Peniano Em Silicone" data-price="13.00" onclick="showProductDescription(this)">
+          <img src="https://us-east-1-prod-treinta-assets-bucket.s3.amazonaws.com/stores/63666139-3135-5336-a365-623962343464/product_photos/1644536696004.png" alt="Anel Peniano">
+          <h3>Anel Peniano Em Silicone</h3>
+          <div class="price-pix">R$ 10,00</div>
+          <div class="price-original">De R$ 13,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Masturbador Cyberskin em Formato de Boca - CYBERSKIN" data-price="65.00" onclick="showProductDescription(this)">
+          <img src="https://us-east-1-prod-treinta-assets-bucket.s3.amazonaws.com/rn_image_picker_lib_temp_4bb9d2cd-7c0b-4bf8-b52a-a390d8ee8f06.jpg.jpeg" alt="Masturbador Cyberskin em Formato de Boca">
+          <h3>Masturbador Em Formato De Boca - CYBERSKIN</h3>
+          <div class="price-pix">R$ 50,00</div>
+          <div class="price-original">De R$ 65,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Pinto Loko" data-price="19.50" onclick="showProductDescription(this)">
+          <img src="https://a-static.mlcdn.com.br/800x560/pinto-loko-gel-estimulante-masculino-que-esquenta-15g-hot-flowers-hot-flowers/ph-comercioeconfeccoesltda/a1ce529af4ff11ed98ff4201ac185049/d3ee122410fecb365cfbf2a01eb0d2e6.jpeg" alt="Pinto Loko">
+          <h3>Pinto Loko</h3>
+          <div class="price-pix">R$ 15,00</div>
+          <div class="price-original">De R$ 19,50</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Egg Masturbador Surfer" data-price="39.00" onclick="showProductDescription(this)">
+          <img src="https://cdn.iset.io/assets/01805/produtos/3879/tenga-ten11.jpg" alt="Egg Masturbador Surfer">
+          <h3>Egg Masturbador Surfer</h3>
+          <div class="price-pix">R$ 30,00</div>
+          <div class="price-original">De R$ 39,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Egg Masturbador Brush" data-price="39.00" onclick="showProductDescription(this)">
+          <img src="https://m.media-amazon.com/images/I/611EF0ezNAL._UF1000,1000_QL80_.jpg" alt="Egg Masturbador Brush">
+          <h3>Egg Masturbador Brush</h3>
+          <div class="price-pix">R$ 30,00</div>
+          <div class="price-original">De R$ 39,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Egg Masturbador Spide" data-price="32.50" onclick="showProductDescription(this)">
+          <img src="https://m.media-amazon.com/images/I/51sHsEc-N8L._UF1000,1000_QL80_.jpg" alt="Egg Masturbador Spide">
+          <h3>Egg Masturbador Spide</h3>
+          <div class="price-pix">R$ 25,00</div>
+          <div class="price-original">De R$ 32,50</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Egg Masturbador Stronger Shiny" data-price="39.00" onclick="showProductDescription(this)">
+          <img src="https://m.media-amazon.com/images/I/51D9+9LqHRL.jpg" alt="Egg Masturbador Stronger Shiny">
+          <h3>Egg Masturbador Stronger Shiny</h3>
+          <div class="price-pix">R$ 30,00</div>
+          <div class="price-original">De R$ 39,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Egg Masturbador Tube" data-price="32.50" onclick="showProductDescription(this)">
+          <img src="https://http2.mlstatic.com/D_Q_NP_611945-MLU77748498315_072024-O.webp" alt="Egg Masturbador Tube">
+          <h3>Egg Masturbador Tube</h3>
+          <div class="price-pix">R$ 25,00</div>
+          <div class="price-original">De R$ 32,50</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Masturbador Funny Egg" data-price="52.00" onclick="showProductDescription(this)">
+          <img src="https://cdn.awsli.com.br/600x450/2588/2588659/produto/284719544/117589-masturbador-funny-egg-formato-de-vagina-1---lilo-159025-6a91k8c0bz.jpg" alt="Masturbador Funny Egg">
+          <h3>Masturbador Funny Egg</h3>
+          <div class="price-pix">R$ 40,00</div>
+          <div class="price-original">De R$ 52,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Volumão Intensificador De Macho" data-price="39.00" onclick="showProductDescription(this)">
+          <img src="https://a-static.mlcdn.com.br/1500x1500/gel-intensificador-de-macho-volumao-25gr-sensacao-de-inchaco-no-orgao-masculino-d-amor/dosedeamor-ltda/hc574/e3bdfe3e90dd80b0a3044752f5a2eff7.jpeg" alt="Volumão Intensificador De Macho">
+          <h3>Volumão Intensificador De Macho</h3>
+          <div class="price-pix">R$ 30,00</div>
+          <div class="price-original">De R$ 39,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+      </div>
+      <button class="arrow right" onclick="scrollCarousel(this, 'right')">&#10095;</button>
+      <div class="dots"></div>
+    </div>
+  </section>
+
+  <!-- ================== Acessórios & Jogos ================== -->
+  <section class="section" id="casal">
+    <h2>Acessórios & Jogos</h2>
+    <div class="carousel-wrapper">
+      <button class="arrow left" onclick="scrollCarousel(this, 'left')">&#10094;</button>
+      <div class="product-carousel">
+        <div class="product" data-name="Fantasia Vou de Táxi" data-price="78.00" onclick="showProductDescription(this)">
+          <img src="https://miess.vteximg.com.br/arquivos/ids/188727/7243PS_1.jpg?v=637194664383370000" alt="Fantasia Vou de Táxi">
+          <h3>Fantasia Vou de Táxi</h3>
+          <div class="price-pix">R$ 60,00</div>
+          <div class="price-original">De R$ 78,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Jogo do Prazer Homem x Homem" data-price="13.00" onclick="showProductDescription(this)">
+          <img src="https://www.adrenalinasexshop.com.br/wp-content/uploads/2018/09/dado-homem.jpg" alt="Jogo do Prazer">
+          <h3>Jogo do Prazer Homem x Homem</h3>
+          <div class="price-pix">R$ 10,00</div>
+          <div class="price-original">De R$ 13,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Baralho Kama Sutra" data-price="32.50" onclick="showProductDescription(this)">
+          <img src="https://dw0jruhdg6fis.cloudfront.net/producao/30517376/G/baralho_kama_sutra_sexy_fantasy_br020.jpg" alt="Baralho Kama Sutra">
+          <h3>Baralho Kama Sutra</h3>
+          <div class="price-pix">R$ 25,00</div>
+          <div class="price-original">De R$ 32,50</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Algemas Metal" data-price="45500" onclick="showProductDescription(this)">
+          <img src="https://static.cdnlive.com.br/uploads/487/unidade/16964540694841_zoom.jpg" alt="Algemas Metal">
+          <h3>Algemas Metal</h3>
+          <div class="price-pix">R$ 35,00</div>
+          <div class="price-original">De R$ 45,50</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+        <div class="product" data-name="Fantasia Mini Xerife" data-price="39.00" onclick="showProductDescription(this)">
+          <img src="https://us-east-1-prod-treinta-assets-bucket.s3.amazonaws.com/rn_image_picker_lib_temp_5e13be6e-3221-41b8-ae79-ede83b4d87c1.jpg.jpeg" alt="Fantasia Mini Xerife">
+          <h3>Fantasia Mini Xerife</h3>
+          <div class="price-pix">R$ 30,00</div>
+          <div class="price-original">De R$ 39,00</div>
+          <div class="promo-badge">30% OFF no PIX</div>
+          <button class="btn-comprar" onclick="showProductDescription(this)">Adicionar ao Carrinho</button>
+        </div>
+      </div>
+      <button class="arrow right" onclick="scrollCarousel(this, 'right')">&#10095;</button>
+      <div class="dots"></div>
+    </div>
+  </section>
+
+  <!-- ================== RODAPÉ ================== -->
+  <footer>
+    © 2025 Sem Censura Sexy Shop. Desenvolvido por
+    <a href="https://github.com/caioolkk" target="_blank" rel="noopener noreferrer">Caio Macario Developer</a>
+  </footer>
+
+  <!-- ================== JAVASCRIPT COMPLETO ================== -->
+  <script>
+    // ================== VARIÁVEIS GLOBAIS ==================
+    let isLoggedIn = false;
+    let currentUser = null;
+    let cart = [];
+    const cartCount = document.getElementById('cart-count');
+    const cartItems = document.getElementById('cart-items');
+    const cartTotal = document.getElementById('cart-total');
+    const toast = document.getElementById('toast');
+
+    // ================== CARRINHO ==================
+    function addToCart(button) {
+      const product = button.closest('.product');
+      const name = product.getAttribute('data-name');
+      const price = parseFloat(product.getAttribute('data-price'));
+      const imgSrc = product.querySelector('img').src;
+
+      const existing = cart.find(item => item.name === name);
+      if (existing) {
+        existing.quantity += 1;
+      } else {
+        cart.push({ name, price, imgSrc, quantity: 1 });
+      }
+
+      updateCart();
+      showToast();
+    }
+
+    function updateCart() {
+      cartCount.textContent = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+      if (cart.length === 0) {
+        cartItems.innerHTML = '<p style="color: #888; text-align: center;">Seu carrinho está vazio.</p>';
+        cartTotal.textContent = '0,00';
+        return;
+      }
+
+      cartItems.innerHTML = '';
+      let total = 0;
+
+      cart.forEach(item => {
+        const itemTotal = item.price * item.quantity;
+        total += itemTotal;
+
+        const cartItem = document.createElement('div');
+        cartItem.className = 'cart-item';
+        cartItem.innerHTML = `
+          <img src="${item.imgSrc}" alt="${item.name}">
+          <div class="cart-item-info">
+            <div>${item.name} x${item.quantity}</div>
+            <div class="cart-item-price">R$ ${itemTotal.toFixed(2).replace('.', ',')}</div>
+            <div class="quantity-control">
+              <button class="quantity-btn" onclick="decreaseQuantity('${item.name}')">−</button>
+              <span class="quantity-value">${item.quantity}</span>
+              <button class="quantity-btn" onclick="increaseQuantity('${item.name}')">+</button>
+              <button class="remove-btn" title="Remover" onclick="removeItem('${item.name}')">🗑️</button>
+            </div>
+          </div>
+        `;
+        cartItems.appendChild(cartItem);
+      });
+
+      cartTotal.textContent = total.toFixed(2).replace('.', ',');
+    }
+
+    function toggleCart() {
+      document.getElementById('cart-modal').style.display = 'flex';
+    }
+
+    function closeCart(event) {
+      const modal = document.getElementById('cart-modal');
+  
+      // Fecha se clicar no fundo DO MODAL
+      if (event.target === modal) {
+        modal.style.display = 'none';
+        return;
+      }
+
+    // Fecha se clicar no botão "X" ou em qualquer elemento dentro dele
+      if (event.target.closest('.cart-close')) {
+       modal.style.display = 'none';
+      }
+    }
+
+    function increaseQuantity(name) {
+      const item = cart.find(item => item.name === name);
+      if (item) {
+        item.quantity += 1;
+        updateCart();
+      }
+    }
+
+    function decreaseQuantity(name) {
+      const item = cart.find(item => item.name === name);
+      if (item && item.quantity > 1) {
+        item.quantity -= 1;
+        updateCart();
+      } else if (item) {
+        removeItem(name);
+      }
+    }
+
+    function removeItem(name) {
+      cart = cart.filter(item => item.name !== name);
+      updateCart();
+    }
+
+    function showToast() {
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2000);
+    }
+    // ================== PESQUISA COM SUGESTÕES ==================
+    const searchIcon = document.querySelector('.search-icon');
+    const searchBar = document.getElementById('search-bar');
+    const searchInput = document.getElementById('search-input');
+    const searchSuggestions = document.getElementById('search-suggestions');
+
+    searchIcon.addEventListener('click', () => {
+      searchBar.style.display = 'flex';
+      searchInput.focus();
+      searchProducts();
+    });
+
+    function closeSearchBar() {
+      searchBar.style.display = 'none';
+      searchInput.value = '';
+     searchSuggestions.style.display = 'none';
+    }
+
+    function searchProducts() {
+      const term = searchInput.value.toLowerCase();
+      searchSuggestions.innerHTML = '';
+  
+      if (!term) {
+        searchSuggestions.style.display = 'none';
+        return;
+      }
+
+      const products = document.querySelectorAll('.product');
+     let found = false;
+
+      products.forEach(product => {
+       const name = product.getAttribute('data-name').toLowerCase();
+       if (name.includes(term)) {
+          found = true;
+         const imgSrc = product.querySelector('img').src;
+         const price = product.getAttribute('data-price');
+      
+         const item = document.createElement('div');
+         item.className = 'search-suggestion-item';
+         item.innerHTML = `
+            <img src="${imgSrc}" alt="${name}">
+           <div>
+              <div>${product.getAttribute('data-name')}</div>
+              <div style="color: #2e7d32; font-weight: 700;">R$ ${parseFloat(price).toFixed(2).replace('.', ',')}</div>
+            </div>
+          `;
+          item.onclick = (e) => {
+            e.stopPropagation();
+            showProductDescription(product);
+           closeSearchBar();
+          };
+          searchSuggestions.appendChild(item);
+        }
+      });
+
+      searchSuggestions.style.display = found ? 'block' : 'none';
+    }
+
+    searchInput.addEventListener('input', searchProducts);
+    // ================== DESCRIÇÃO DO PRODUTO ==================
+    const productModal = document.getElementById('product-modal');
+    const modalImg = document.getElementById('modal-img');
+    const modalTitle = document.getElementById('modal-title');
+    const modalDesc = document.getElementById('modal-desc');
+    const modalPrice = document.getElementById('modal-price');
+    let currentProductElement = null;
+
+    const descriptions = {
+      'Sugador Clitoriano': 'Estimulador clitoriano com sucção ajustável e vibração. Ideal para orgasmos intensos.',
+      'Orgastic': 'Suplemento afrodisíaco natural para aumento do desejo sexual feminino.',
+      'Desodorante Soft Love Skin Ice': 'Desodorante íntimo refrescante com fragrância suave. Mantém o pH balanceado.',
+      'Perfume Feminino Tutti Fruitt': 'Perfume doce e frutado, ideal para momentos íntimos. Notas de morango e pêssego.',
+      'Tu Xera Hidratante Virilha Beijável': 'Hidratante comestível para região íntima. Sabor doce e efeito aquecedor suave.',
+      'Vibrador Golfinho Toque Aveludado': 'Vibrador com toque aveludado e 7 modos de vibração. À prova d\'água e silencioso.',
+      'Vibrador Ponto G Duplo Motor 17cm': 'Vibrador com duplo motor: um para o ponto G e outro para o clitóris. Recarregável.',
+      'Sabonete Íntimo Aromatizado Uva e Babalou': 'Sabonete íntimo aromatizado com fragrância de uva. Limpeza suave e proteção.',
+      'Pênis Realístico com Ventosa': 'Pênis realístico feito em silicone macio, com ventosa para fixação segura.',
+      'Algemas Metal': 'Algemas de metal com chave. Ideais para sado e fetiches. Ajustáveis e seguras.',
+      'Anel Peniano Em Silicone': 'Anel peniano que ajuda a prolongar a ereção e retardar a ejaculação.',
+      'Anel Peniano com Vibro': 'Anel peniano com vibração ajustável para maior estimulação durante a relação.',
+      'Cinta Peniana com Regulagem': 'Cinta peniana ajustável para casais. Permite penetração vaginal ou anal com conforto.',
+      'Egg Masturbador Surfer': 'Egg masturbador com textura interna e vibração suave. Discreto e fácil de usar.',
+      'Egg Masturbador Brush': 'Egg com textura interna tipo escova. Ideal para sensação de fricção.',
+      'Egg Masturbador Spide': 'Egg com formato interno de espiral. Sensação intensa e diferenciada.',
+      'Egg Masturbador Stronger Shiny': 'Egg com vibração potente e acabamento brilhante. Recarregável.',
+      'Egg Masturbador Tube': 'Tubo masturbador com textura interna. Simula sensação realista.',
+      'Potencializador Masculino': 'Gel potencializador para aumento da sensibilidade e duração da ereção.',
+      'Fantasia Vou de Táxi': 'Fantasia sensual de motorista de táxi. Inclui blusa, saia e chapéu.',
+      'Gel Térmico 8ml': 'Gel térmico que aquece e esfria. Ideal para momentos a dois.',
+      'Jogo do Prazer Homem x Homem': 'Jogo erótico com cartas de desafios sensuais para casais.',
+      'Lubrificante Beijável Bubbalove Menta': 'Lubrificante comestível sabor menta refrescante. Hidratação prolongada.',
+      'Masturbador Cyberskin em Formato de Boca': 'Masturbador em formato de boca, feito em cyberskin macio e realista.',
+      'Masturbador Lanterna Funny Egg': 'Masturbador em formato de lanterna com egg vibratório interno.',
+      'Fantasia Mini Xerife': ' Kit Mini Fantasia Xerife Pimenta Sexy - Autoridade e Sedução em Um Só Look. Desperte sua autoridade e charme com o Kit Mini Fantasia Xerife Pimenta Sexy! Ideal para quem deseja apimentar a relação e viver momentos inesquecíveis de sedução e diversão. Detalhes do Produto: Tamanho Único: Veste do 36 ao 44, proporcionando um ajuste confortável e versátil para diferentes tipos de corpo.',
+      'Bullet Mini Cápsula': 'Vibrador discreto em formato de cápsula. Ideal para estimulação clitoriana.',
+      'Baralho Kama Sutra': 'Baralho com 60 cartas de posições sexuais e desafios eróticos.',
+      'Bolinhas Tailandesas': 'Bolinhas ninjas para estimulação do ponto G. Série de esferas conectadas.',
+      'Cinta P/2 Proteção DP Invertida La Pimienta': 'Cinta dupla para casais com proteção DP invertida. Segura e confortável.',
+      'Plug Anal G': 'Plug anal em silicone macio, tamanho grande. Ideal para experiências avançadas.',
+      'Plug Anal M': 'Plug anal médio em silicone. Design anatômico e seguro.',
+      'Plug Anal PP': 'Plug anal pequeno, ideal para iniciantes. Fácil de usar e remover.',
+      'Plug Anal P': 'Plug anal pequeno em silicone macio. Perfeito para uso diário.',
+      'Plug Anal Médio': 'Plug anal em tamanho médio, com base segura e acabamento liso.'
+
+    };
+
+    function showProductDescription(productElement) {
+      const name = productElement.getAttribute('data-name');
+      const price = productElement.getAttribute('data-price');
+      const imgSrc = productElement.querySelector('img').src;
+
+      modalImg.src = imgSrc;
+      modalTitle.textContent = name;
+      modalDesc.textContent = descriptions[name] || 'Produto sensual de alta qualidade.';
+      modalPrice.textContent = `R$ ${parseFloat(price).toFixed(2).replace('.', ',')}`;
+      currentProductElement = productElement;
+
+      productModal.style.display = 'flex';
+    }
+
+    function closeProductModal() {
+      productModal.style.display = 'none';
+    }
+
+    function addFromModal() {
+      addToCart(currentProductElement.querySelector('.btn-comprar'));
+      closeProductModal();
+    }
+
+    productModal.addEventListener('click', (e) => {
+      if (e.target === productModal) {
+        closeProductModal();
+      }
+    });
+
+    // ================== AUTENTICAÇÃO ==================
+    function openAuthModal() {
+      document.getElementById('auth-modal').style.display = 'flex';
+    }
+
+    function closeAuthModal() {
+      document.getElementById('auth-modal').style.display = 'none';
+    }
+
+    function switchAuthTab(tab) {
+      const loginForm = document.getElementById('login-form');
+      const registerForm = document.getElementById('register-form');
+      const tabs = document.querySelectorAll('.tab-btn');
+
+      if (tab === 'login') {
+        loginForm.style.display = 'block';
+        registerForm.style.display = 'none';
+        tabs[0].classList.add('active');
+        tabs[1].classList.remove('active');
+      } else {
+        loginForm.style.display = 'none';
+        registerForm.style.display = 'block';
+        tabs[1].classList.add('active');
+        tabs[0].classList.remove('active');
+      }
+    }
+
+    // ================== CADASTRO ==================
+    document.getElementById('register-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const nome = this.querySelector('input[placeholder="Nome Completo"]').value.trim();
+      const email = this.querySelector('input[type="email"]').value.trim();
+      const telefone = this.querySelector('input[placeholder="Telefone (opcional)"]').value.trim();
+      const senha = this.querySelector('input[placeholder="Senha"]').value;
+
+      if (!nome || !email || !senha) {
+        alert('Preencha nome, email e senha.');
+        return;
+      }
+
+      const usuarios = JSON.parse(localStorage.getItem('usuarios') || '[]');
+      if (usuarios.find(u => u.email === email)) {
+        alert('Email já cadastrado!');
+        return;
+      }
+
+      // Simulação de verificação de email
+      alert('Cadastro realizado! Enviamos um email de verificação para ' + email + '.');
+      
+      usuarios.push({ nome, email, telefone, senha });
+      localStorage.setItem('usuarios', JSON.stringify(usuarios));
+      
+      switchAuthTab('login');
+    });
+
+    // ================== LOGIN ==================
+    document.getElementById('login-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const email = this.querySelector('input[type="email"]').value.trim();
+      const senha = this.querySelector('input[type="password"]').value;
+
+      const usuarios = JSON.parse(localStorage.getItem('usuarios') || '[]');
+      const user = usuarios.find(u => u.email === email && u.senha === senha);
+
+      if (user) {
+        isLoggedIn = true;
+        currentUser = user;
+        alert('Login realizado com sucesso!');
+        closeAuthModal();
+      } else {
+        alert('Email ou senha inválidos.');
+      }
+    });  
+
+    // ================== FINALIZAR COMPRA ==================
+    function handleCheckout() {
+      console.log("handleCheckout chamado. isLoggedIn:", isLoggedIn);
+
+      if (cart.length === 0) {
+        alert('Seu carrinho está vazio!');
+        return;
+      }
+
+      if (!isLoggedIn) {
+        openAuthModal();
+        return;
+      }
+
+      const codigoIndicacao = document.getElementById('codigo-indicacao').value.trim();
+
+      const pedido = {
+        usuario: currentUser.email,
+        carrinho: cart,
+        codigoIndicacao: codigoIndicacao,
+        data: new Date().toISOString(),
+        status: 'pendente'
+      };
+      const pedidos = JSON.parse(localStorage.getItem('pedidos') || '[]');
+      pedidos.push(pedido);
+      localStorage.setItem('pedidos', JSON.stringify(pedidos));
+
+      if (document.getElementById('entrega-sigilosa')?.checked) {
+        document.getElementById('faq-modal').style.display = 'flex';
+      } else {
+        openMercadoPagoCheckout();
+      }
+    }
+
+    // ================== FAQ MODAL ==================
+    function closeFaqModal() {
+      document.getElementById('faq-modal').style.display = 'none';
+      document.getElementById('faq-message').value = '';
+    }
+
+    document.getElementById('faq-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const message = document.getElementById('faq-message').value;
+      if (!message.trim()) {
+        alert('Por favor, escreva seu endereço e detalhes.');
+        return;
+      }
+      const mailto = `mailto:caio1developer@gmail.com?subject=Mensagem do Cliente - Entrega Sigilosa&body=${encodeURIComponent(message)}`;
+      window.open(mailto);
+      alert('Sua mensagem foi enviada! Responderemos em breve.');
+      closeFaqModal();
+      openMercadoPagoCheckout();
+    });
+
+    // ================== MERCADO PAGO ==================
+    const publicKey = 'TEST-1264556f-8962-41a3-8e8c-576042385e75';
+    const mp = new MercadoPago(publicKey, { locale: 'pt-BR' });
+
+    function openMercadoPagoCheckout() {
+      const preference = {
+        items: cart.map(item => ({
+          title: item.name,
+          quantity: item.quantity,
+          unit_price: item.price
+        })),
+        back_urls: {
+          success: window.location.href,
+          failure: window.location.href,
+          pending: window.location.href
+        },
+        auto_return: 'approved',
+        binary_mode: true
+      };
+
+      fetch('/create_preference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(preference)
+      })
+      .then(res => res.json())
+      .then(data => {
+        const checkout = mp.checkout({
+          preference: { id: data.id },
+          render: { container: '.cart-footer', label: 'Pagar' }
+        });
+      })
+      .catch(err => {
+        console.error('Erro ao processar pagamento:', err);
+        alert('Erro ao processar pagamento. Tente novamente.');
+      });
+    }
+
+    // ================== CARROSSEL ==================
+    function scrollCarousel(button, direction) {
+      const carousel = button.parentElement.querySelector('.product-carousel');
+      const scrollAmount = direction === 'left' ? -300 : 300;
+      carousel.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+
+    document.querySelectorAll('.carousel-wrapper').forEach(wrapper => {
+      const carousel = wrapper.querySelector('.product-carousel');
+      const dotsContainer = wrapper.querySelector('.dots');
+
+      const updateDots = () => {
+        const productWidth = carousel.querySelector('.product')?.offsetWidth + 15 || 0;
+        const scrollLeft = carousel.scrollLeft;
+        const index = Math.round(scrollLeft / productWidth);
+        const dots = dotsContainer?.children;
+        if (dots) {
+          for (let i = 0; i < dots.length; i++) {
+            dots[i].classList.toggle('active', i === index);
+          }
+        }
+      };
+
+      const productCount = wrapper.querySelectorAll('.product').length;
+      const visibleCount = window.innerWidth >= 768 ? 6 : 2;
+      const totalPages = Math.max(1, Math.ceil(productCount / visibleCount));
+
+      if (dotsContainer) {
+        for (let i = 0; i < totalPages; i++) {
+          const dot = document.createElement('div');
+          dot.className = 'dot' + (i === 0 ? ' active' : '');
+          dotsContainer.appendChild(dot);
+        }
+      }
+
+      if (window.innerWidth >= 768 && totalPages > 1) {
+        wrapper.querySelector('.arrow.left').style.display = 'flex';
+        wrapper.querySelector('.arrow.right').style.display = 'flex';
+      }
+
+      carousel.addEventListener('scroll', updateDots);
+      window.addEventListener('resize', updateDots);
+    });
+
+    // ================== SCROLL SUAVE ==================
+    document.querySelectorAll('nav a[href^="#"]').forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          window.scrollTo({ top: target.offsetTop - 80, behavior: 'smooth' });
+        }
+      });
+    });
+
+    // INICIALIZAR
+    updateCart();
+  </script>
+</body>
+</html>
