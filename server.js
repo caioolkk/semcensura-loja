@@ -4,9 +4,10 @@ const path = require('path');
 const fs = require('fs');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
+const axios = require('axios'); // Adicionado para integração com MP
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
@@ -39,13 +40,13 @@ const writeData = (file, data) => {
   }
 };
 
-// Transporter Nodemailer (Gmail) ✅ CORRIGIDO
+// Transporter Nodemailer (Gmail)
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   secure: true,
   auth: {
-    user: 'caio1developer@gmail.com', // SEU EMAIL
-    pass: 'fcrl vcki zbqj qawp'     // SENHA DE APP
+    user: 'caio1developer@gmail.com',
+    pass: 'fcrl vcki zbqj qawp' // senha de app
   }
 });
 
@@ -125,14 +126,17 @@ app.post('/login', (req, res) => {
   res.json({ message: 'Login bem-sucedido', user: { email: user.email, nome: user.nome } });
 });
 
-// Finalizar compra
-app.post('/create_preference', (req, res) => {
+// ================== MERCADO PAGO INTEGRAÇÃO REAL ==================
+const ACCESS_TOKEN = 'TEST-9f1d58d2-f5c2-4073-aa2e-b63624a6b1ee'; // <-- COLOQUE SEU ACCESS TOKEN AQUI
+
+app.post('/create_preference', async (req, res) => {
   const { items, usuario, codigoIndicacao } = req.body;
 
   if (!items || !usuario) {
     return res.status(400).json({ error: 'Dados incompletos.' });
   }
 
+  // Salvar pedido
   const pedidos = readData(PEDIDOS_FILE);
   const pedido = {
     id: Date.now().toString(),
@@ -145,8 +149,39 @@ app.post('/create_preference', (req, res) => {
   pedidos.push(pedido);
   writeData(PEDIDOS_FILE, pedidos);
 
-  // Simulação de ID do Mercado Pago
-  res.json({ id: 'MP-' + pedido.id });
+  // Criar preferência no Mercado Pago
+  const preferenceData = {
+    items: items.map(item => ({
+      title: item.name,
+      quantity: item.quantity,
+      unit_price: parseFloat(item.price),
+      currency_id: 'BRL'
+    })),
+    payer: {
+      email: usuario
+    },
+    back_urls: {
+      success: 'https://caioolkk.github.io/semcensura-frontend/',
+      failure: 'https://caioolkk.github.io/semcensura-frontend/',
+      pending: 'https://caioolkk.github.io/semcensura-frontend/'
+    },
+    auto_return: 'approved',
+    binary_mode: true
+  };
+
+  try {
+    const response = await axios.post('https://api.mercadopago.com/checkout/preferences', preferenceData, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${ACCESS_TOKEN}`
+      }
+    });
+
+    res.json({ id: response.data.id });
+  } catch (error) {
+    console.error('Erro no Mercado Pago:', error.response?.data || error.message);
+    res.status(500).json({ error: 'Erro ao processar pagamento.' });
+  }
 });
 
 // Dashboard (só para você)
