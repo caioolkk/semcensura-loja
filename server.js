@@ -1,133 +1,134 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
-const fs = require('fs');
+const mongoose = require('mongoose');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
-const axios = require('axios'); // Adicionado para integração com MP
+const axios = require('axios');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Conexão com MongoDB
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('✅ Conectado ao MongoDB Atlas'))
+  .catch(err => console.error('Erro ao conectar ao MongoDB:', err));
+
+// Modelos
+const userSchema = new mongoose.Schema({
+  nome: String,
+  email: { type: String, unique: true },
+  telefone: String,
+  senha: String,
+  token: String,
+  verificado: { type: Boolean, default: false }
+});
+const User = mongoose.model('User', userSchema);
+
+const pedidoSchema = new mongoose.Schema({
+  id: String,
+  usuario: String,
+  itens: Array,
+  codigoIndicacao: String,
+  data: String,
+  status: String
+});
+const Pedido = mongoose.model('Pedido', pedidoSchema);
+
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
 
-// Pastas
-const DATA_DIR = path.join(__dirname, 'data');
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
-
-const USERS_FILE = path.join(DATA_DIR, 'usuarios.json');
-const PEDIDOS_FILE = path.join(DATA_DIR, 'pedidos.json');
-
-// Funções de leitura/escrita
-const readData = (file) => {
-  if (!fs.existsSync(file)) return [];
-  try {
-    return JSON.parse(fs.readFileSync(file, 'utf-8'));
-  } catch (err) {
-    console.error('Erro ao ler arquivo:', file, err);
-    return [];
-  }
-};
-
-const writeData = (file, data) => {
-  try {
-    fs.writeFileSync(file, JSON.stringify(data, null, 2));
-  } catch (err) {
-    console.error('Erro ao escrever arquivo:', file, err);
-  }
-};
-
-// Transporter Nodemailer (Gmail)
+// Transporter Nodemailer
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   secure: true,
   auth: {
     user: 'caio1developer@gmail.com',
-    pass: 'fcrl vcki zbqj qawp' // senha de app
+    pass: 'fcrl vcki zbqj qawp' // sua senha de app
   }
 });
 
 // ================== ROTAS ==================
 
-// Cadastro com verificação
-app.post('/register', (req, res) => {
+// Cadastro
+app.post('/register', async (req, res) => {
   const { nome, email, telefone, senha } = req.body;
 
   if (!nome || !email || !senha) {
     return res.status(400).json({ error: 'Preencha nome, email e senha.' });
   }
 
-  const usuarios = readData(USERS_FILE);
-  if (usuarios.find(u => u.email === email)) {
-    return res.status(400).json({ error: 'Email já cadastrado' });
-  }
-
-  const token = crypto.randomBytes(32).toString('hex');
-  const user = { nome, email, telefone, senha, token, verificado: false };
-
-  usuarios.push(user);
-  writeData(USERS_FILE, usuarios);
-
-  // Enviar email de verificação
-  const link = `https://caioolkk.github.io/semcensura-frontend/confirmar?token=${token}`;
-  const mailOptions = {
-    from: 'caio1developer@gmail.com',
-    to: email,
-    subject: 'Confirme seu cadastro no Sem Censura',
-    html: `<h2>Olá, ${nome}!</h2>
-           <p>Obrigado por se cadastrar. Clique no link abaixo para confirmar seu email:</p>
-           <a href="${link}" target="_blank">${link}</a>`
-  };
-
-  transporter.sendMail(mailOptions, (err, info) => {
-    if (err) {
-      console.log('Erro ao enviar email:', err);
-      return res.status(500).json({ error: 'Erro ao enviar email de confirmação.' });
+  try {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email já cadastrado' });
     }
-    console.log('Email enviado:', info.response);
-  });
 
-  res.json({ message: 'Cadastro realizado! Verifique seu email.' });
+    const token = crypto.randomBytes(32).toString('hex');
+    const user = new User({ nome, email, telefone, senha, token, verificado: false });
+    await user.save();
+
+    const link = `https://caioolkk.github.io/semcensura-frontend/confirmar?token=${token}`;
+    const mailOptions = {
+      from: 'caio1developer@gmail.com',
+      to: email,
+      subject: 'Confirme seu cadastro no Sem Censura',
+      html: `<h2>Olá, ${nome}!</h2>
+             <p>Obrigado por se cadastrar. Clique no link abaixo para confirmar seu email:</p>
+             <a href="${link}" target="_blank">${link}</a>`
+    };
+
+    await transporter.sendMail(mailOptions);
+    res.json({ message: 'Cadastro realizado! Verifique seu email.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro no servidor.' });
+  }
 });
 
 // Confirmar email
-app.get('/confirmar', (req, res) => {
+app.get('/confirmar', async (req, res) => {
   const { token } = req.query;
   if (!token) return res.status(400).send('<h3>Token não fornecido.</h3>');
 
-  const usuarios = readData(USERS_FILE);
-  const user = usuarios.find(u => u.token === token);
+  try {
+    const user = await User.findOne({ token });
+    if (!user) return res.send('<h3>Link inválido ou expirado.</h3>');
 
-  if (!user) return res.send('<h3>Link inválido ou expirado.</h3>');
+    user.verificado = true;
+    await user.save();
 
-  user.verificado = true;
-  writeData(USERS_FILE, usuarios);
-
-  res.send(`
-    <h3>Email confirmado com sucesso! 🎉</h3>
-    <p>Você já pode fazer login.</p>
-    <a href="https://caioolkk.github.io/semcensura-frontend/" style="color: #e91e63;">Voltar ao site</a>
-  `);
+    res.send(`
+      <h3>Email confirmado com sucesso! 🎉</h3>
+      <p>Você já pode fazer login.</p>
+      <a href="https://caioolkk.github.io/semcensura-frontend/" style="color: #e91e63;">Voltar ao site</a>
+    `);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('<h3>Erro ao confirmar email.</h3>');
+  }
 });
 
 // Login
-app.post('/login', (req, res) => {
+app.post('/login', async (req, res) => {
   const { email, senha } = req.body;
-  const usuarios = readData(USERS_FILE);
-  const user = usuarios.find(u => u.email === email);
 
-  if (!user) return res.status(401).json({ error: 'Email ou senha inválidos' });
-  if (!user.verificado) return res.status(403).json({ error: 'Email não verificado. Confirme seu email.' });
-  if (user.senha !== senha) return res.status(401).json({ error: 'Senha incorreta' });
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return res.status(401).json({ error: 'Email ou senha inválidos' });
+    if (!user.verificado) return res.status(403).json({ error: 'Email não verificado.' });
+    if (user.senha !== senha) return res.status(401).json({ error: 'Senha incorreta' });
 
-  res.json({ message: 'Login bem-sucedido', user: { email: user.email, nome: user.nome } });
+    res.json({ message: 'Login bem-sucedido', user: { email: user.email, nome: user.nome } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro no servidor.' });
+  }
 });
 
-// ================== MERCADO PAGO INTEGRAÇÃO REAL ==================
-const ACCESS_TOKEN = 'TEST-9f1d58d2-f5c2-4073-aa2e-b63624a6b1ee'; // <-- COLOQUE SEU ACCESS TOKEN AQUI
+// Criar preferência do Mercado Pago
+const ACCESS_TOKEN = 'TEST-9f1d58d2-f5c2-4073-aa2e-b63624a6b1ee';
 
 app.post('/create_preference', async (req, res) => {
   const { items, usuario, codigoIndicacao } = req.body;
@@ -136,40 +137,34 @@ app.post('/create_preference', async (req, res) => {
     return res.status(400).json({ error: 'Dados incompletos.' });
   }
 
-  // Salvar pedido
-  const pedidos = readData(PEDIDOS_FILE);
-  const pedido = {
-    id: Date.now().toString(),
-    usuario,
-    itens: items,
-    codigoIndicacao: codigoIndicacao || 'sem código',
-    data: new Date().toISOString(),
-    status: 'pendente'
-  };
-  pedidos.push(pedido);
-  writeData(PEDIDOS_FILE, pedidos);
-
-  // Criar preferência no Mercado Pago
-  const preferenceData = {
-    items: items.map(item => ({
-      title: item.name,
-      quantity: item.quantity,
-      unit_price: parseFloat(item.price),
-      currency_id: 'BRL'
-    })),
-    payer: {
-      email: usuario
-    },
-    back_urls: {
-      success: 'https://caioolkk.github.io/semcensura-frontend/',
-      failure: 'https://caioolkk.github.io/semcensura-frontend/',
-      pending: 'https://caioolkk.github.io/semcensura-frontend/'
-    },
-    auto_return: 'approved',
-    binary_mode: true
-  };
-
   try {
+    const pedido = new Pedido({
+      id: Date.now().toString(),
+      usuario,
+      itens: items,
+      codigoIndicacao: codigoIndicacao || 'sem código',
+      data: new Date().toISOString(),
+      status: 'pendente'
+    });
+    await pedido.save();
+
+    const preferenceData = {
+      items: items.map(item => ({
+        title: item.name,
+        quantity: item.quantity,
+        unit_price: parseFloat(item.price),
+        currency_id: 'BRL'
+      })),
+      payer: { email: usuario },
+      back_urls: {
+        success: 'https://caioolkk.github.io/semcensura-frontend/',
+        failure: 'https://caioolkk.github.io/semcensura-frontend/',
+        pending: 'https://caioolkk.github.io/semcensura-frontend/'
+      },
+      auto_return: 'approved',
+      binary_mode: true
+    };
+
     const response = await axios.post('https://api.mercadopago.com/checkout/preferences', preferenceData, {
       headers: {
         'Content-Type': 'application/json',
@@ -184,17 +179,18 @@ app.post('/create_preference', async (req, res) => {
   }
 });
 
-// Dashboard (só para você)
-app.get('/admin/usuarios', (req, res) => {
-  const usuarios = readData(USERS_FILE);
+// Rotas de admin (opcional)
+app.get('/admin/usuarios', async (req, res) => {
+  const usuarios = await User.find();
   res.json(usuarios);
 });
 
-app.get('/admin/pedidos', (req, res) => {
-  const pedidos = readData(PEDIDOS_FILE);
+app.get('/admin/pedidos', async (req, res) => {
+  const pedidos = await Pedido.find();
   res.json(pedidos);
 });
 
 app.listen(PORT, () => {
-  console.log(`Servidor rodando em http://localhost:${PORT}`);
+  console.log(`✅ Servidor rodando em http://localhost:${PORT}`);
+  console.log(`🔗 Conectado ao MongoDB Atlas`);
 });

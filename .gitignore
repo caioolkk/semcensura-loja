@@ -1,0 +1,14 @@
+# Arquivos de ambiente
+.env
+.env.local
+
+# Pastas que não devem subir
+node_modules/
+data/
+
+# Arquivos de log
+*.log
+
+# Arquivos temporários
+.DS_Store
+Thumbs.db

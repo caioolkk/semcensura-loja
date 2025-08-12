@@ -6,8 +6,11 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
+    "axios": "^1.11.0",
     "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.18.2",
+    "mongoose": "^7.8.7",
     "nodemailer": "^6.9.13"
   }
 }
