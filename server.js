@@ -39,13 +39,13 @@ const Pedido = mongoose.model('Pedido', pedidoSchema);
 app.use(cors());
 app.use(express.json());
 
-// Transporter Nodemailer
+// Transporter Nodemailer (com o novo email)
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   secure: true,
   auth: {
-    user: 'caio1developer@gmail.com',
-    pass: 'fcrl vcki zbqj qawp' // sua senha de app
+    user: process.env.EMAIL_USER || 'sexyshopsemcensura0@gmail.com',
+    pass: process.env.EMAIL_PASS
   }
 });
 
@@ -69,9 +69,9 @@ app.post('/register', async (req, res) => {
     const user = new User({ nome, email, telefone, senha, token, verificado: false });
     await user.save();
 
-    const link = `https://caioolkk.github.io/semcensura-frontend/confirmar?token=${token}`;
+    const link = `https://semcensura-loja.onrender.com/confirmar?token=${token}`;
     const mailOptions = {
-      from: 'caio1developer@gmail.com',
+      from: process.env.EMAIL_USER,
       to: email,
       subject: 'Confirme seu cadastro no Sem Censura',
       html: `<h2>Olá, ${nome}!</h2>
@@ -128,8 +128,6 @@ app.post('/login', async (req, res) => {
 });
 
 // Criar preferência do Mercado Pago
-const ACCESS_TOKEN = 'TEST-9f1d58d2-f5c2-4073-aa2e-b63624a6b1ee';
-
 app.post('/create_preference', async (req, res) => {
   const { items, usuario, codigoIndicacao } = req.body;
 
@@ -168,7 +166,7 @@ app.post('/create_preference', async (req, res) => {
     const response = await axios.post('https://api.mercadopago.com/checkout/preferences', preferenceData, {
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${ACCESS_TOKEN}`
+        'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}`
       }
     });
 
