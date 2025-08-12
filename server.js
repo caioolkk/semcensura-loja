@@ -39,12 +39,12 @@ const Pedido = mongoose.model('Pedido', pedidoSchema);
 app.use(cors());
 app.use(express.json());
 
-// Transporter Nodemailer (com o novo email)
+// Transporter Nodemailer
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   secure: true,
   auth: {
-    user: process.env.EMAIL_USER || 'sexyshopsemcensura0@gmail.com',
+    user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   }
 });
@@ -82,7 +82,7 @@ app.post('/register', async (req, res) => {
     await transporter.sendMail(mailOptions);
     res.json({ message: 'Cadastro realizado! Verifique seu email.' });
   } catch (err) {
-    console.error(err);
+    console.error('Erro no cadastro:', err);
     res.status(500).json({ error: 'Erro no servidor.' });
   }
 });
@@ -105,7 +105,7 @@ app.get('/confirmar', async (req, res) => {
       <a href="https://caioolkk.github.io/semcensura-frontend/" style="color: #e91e63;">Voltar ao site</a>
     `);
   } catch (err) {
-    console.error(err);
+    console.error('Erro ao confirmar email:', err);
     res.status(500).send('<h3>Erro ao confirmar email.</h3>');
   }
 });
@@ -122,7 +122,7 @@ app.post('/login', async (req, res) => {
 
     res.json({ message: 'Login bem-sucedido', user: { email: user.email, nome: user.nome } });
   } catch (err) {
-    console.error(err);
+    console.error('Erro no login:', err);
     res.status(500).json({ error: 'Erro no servidor.' });
   }
 });
@@ -186,6 +186,24 @@ app.get('/admin/usuarios', async (req, res) => {
 app.get('/admin/pedidos', async (req, res) => {
   const pedidos = await Pedido.find();
   res.json(pedidos);
+});
+
+// Rota de teste de email
+app.get('/test-email', async (req, res) => {
+  try {
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: 'caiomacario017@gmail.com',
+      subject: '📧 Teste de Envio - Loja Sem Censura',
+      html: '<h2>Se você recebeu isso, o Nodemailer está funcionando!</h2><p>Parabéns, seu servidor consegue enviar emails!</p>'
+    };
+
+    await transporter.sendMail(mailOptions);
+    res.send('✅ Email de teste enviado com sucesso!');
+  } catch (error) {
+    console.error('Erro ao enviar email de teste:', error);
+    res.status(500).send(`❌ Falha ao enviar email: ${error.message}`);
+  }
 });
 
 app.listen(PORT, () => {
