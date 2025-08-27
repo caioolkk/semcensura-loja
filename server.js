@@ -195,3 +195,29 @@ app.listen(PORT, () => {
   console.log(`✅ Servidor rodando em http://localhost:${PORT}`);
   console.log(`🔗 Conectado ao MongoDB Atlas`);
 });
+// ================== WEBHOOK DO MERCADO PAGO ==================
+app.post('/webhook', async (req, res) => {
+  const { type, data } = req.body;
+
+  if (type === 'payment') {
+    try {
+      const payment = await axios.get(`https://api.mercadopago.com/v1/payments/${data.id}`, {
+        headers: { 'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}` }
+      });
+
+      const { status, external_reference: email } = payment.data;
+
+      // Atualiza o pedido no banco de dados
+      await Pedido.findOneAndUpdate(
+        { usuario: email },
+        { status: status === 'approved' ? 'aprovado' : status }
+      );
+
+      console.log(`✅ Pedido de ${email} atualizado para: ${status}`);
+    } catch (err) {
+      console.error('Erro ao processar webhook:', err.message);
+    }
+  }
+
+  res.status(200).send('OK');
+});
