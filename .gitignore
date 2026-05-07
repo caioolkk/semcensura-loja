@@ -12,3 +12,5 @@ data/
 # Arquivos temporários
 .DS_Store
 Thumbs.db
+
+firebase-key.json

@@ -1,223 +1,193 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const mongoose = require('mongoose');
+const admin = require('firebase-admin');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
-const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Conexão com MongoDB
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('✅ Conectado ao MongoDB Atlas'))
-  .catch(err => console.error('Erro ao conectar ao MongoDB:', err));
+// ================== INICIALIZAR FIREBASE ==================
+try {
+  const serviceAccountPath = path.join(__dirname, 'firebase-key.json');
+  
+  if (fs.existsSync(serviceAccountPath)) {
+    const serviceAccount = require(serviceAccountPath);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    console.log('🔥 Conectado ao Firebase Firestore!');
+  } else {
+    console.error('❌ ERRO: firebase-key.json não encontrado!');
+    process.exit(1);
+  }
+} catch (error) {
+  console.error('❌ Erro Firebase:', error);
+  process.exit(1);
+}
 
-// Modelos
-const userSchema = new mongoose.Schema({
-  nome: String,
-  email: { type: String, unique: true },
-  telefone: String,
-  senha: String,
-  token: String,
-  verificado: { type: Boolean, default: false }
-});
-const User = mongoose.model('User', userSchema);
+const db = admin.firestore();
 
-const pedidoSchema = new mongoose.Schema({
-  id: String,
-  usuario: String,
-  itens: Array,
-  codigoIndicacao: String,
-  data: String,
-  status: String
-});
-const Pedido = mongoose.model('Pedido', pedidoSchema);
-
-// Middleware
+// ================== MIDDLEWARE ==================
 app.use(cors());
 app.use(express.json());
 
-// Transporter Nodemailer (com o novo email)
+// ================== EMAIL ==================
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   secure: true,
   auth: {
     user: process.env.EMAIL_USER || 'sexyshopsemcensura0@gmail.com',
-    pass: process.env.EMAIL_PASS
+    pass: process.env.EMAIL_PASS || ''
   }
 });
 
-// ================== ROTAS ==================
+// ================== SEGURANÇA ADMIN ==================
+const ADMIN_KEY = process.env.ADMIN_KEY || 'semcensura_admin_2024';
+const verifyAdmin = (req, res, next) => {
+  if (req.headers['x-admin-key'] !== ADMIN_KEY) {
+    return res.status(403).json({ error: 'Acesso negado' });
+  }
+  next();
+};
 
-// Cadastro
+// ================== ROTAS PÚBLICAS ==================
+
+// 🛍️ Listar Produtos
+app.get('/api/produtos', async (req, res) => {
+  try {
+    const snapshot = await db.collection('produtos').orderBy('createdAt', 'desc').get();
+    const produtos = snapshot.docs.map(doc => ({ ...doc.data(), _id: doc.id }));
+    res.json(produtos);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 📝 Cadastro
 app.post('/register', async (req, res) => {
   const { nome, email, telefone, senha } = req.body;
-
-  if (!nome || !email || !senha) {
-    return res.status(400).json({ error: 'Preencha nome, email e senha.' });
-  }
-
+  if (!nome || !email || !senha) return res.status(400).json({ error: 'Preencha tudo.' });
+  
   try {
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ error: 'Email já cadastrado' });
-    }
+    const snapshot = await db.collection('users').where('email', '==', email).get();
+    if (!snapshot.empty) return res.status(400).json({ error: 'Email já cadastrado' });
 
     const token = crypto.randomBytes(32).toString('hex');
-    const user = new User({ nome, email, telefone, senha, token, verificado: false });
-    await user.save();
+    
+    await db.collection('users').add({
+      nome, email, telefone, senha, token,
+      verificado: false,
+      createdAt: new Date().toISOString()
+    });
 
-    const link = `https://semcensura-loja.onrender.com/confirmar?token=${token}`;
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'Confirme seu cadastro no Sem Censura',
-      html: `<h2>Olá, ${nome}!</h2>
-             <p>Obrigado por se cadastrar. Clique no link abaixo para confirmar seu email:</p>
-             <a href="${link}" target="_blank">${link}</a>`
-    };
+    if (!process.env.EMAIL_PASS) {
+      const userDoc = await db.collection('users').where('email', '==', email).get();
+      if (!userDoc.empty) await userDoc.docs[0].ref.update({ verificado: true, token: null });
+      return res.json({ message: 'Cadastro realizado!', user: { nome, email } });
+    }
 
-    await transporter.sendMail(mailOptions);
+    const link = `${process.env.FRONTEND_URL || 'https://caioolkk.github.io/semcensura-frontend/'}confirmar?token=${token}`;
+    transporter.sendMail({
+      from: process.env.EMAIL_USER, to: email, subject: 'Confirme seu cadastro',
+      html: `<a href="${link}">Clique aqui</a>`
+    }).catch(err => console.warn('⚠️ Erro email:', err.message));
+
     res.json({ message: 'Cadastro realizado! Verifique seu email.' });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: 'Erro no servidor.' });
   }
 });
 
-// Confirmar email
+// ✅ Confirmar Email
 app.get('/confirmar', async (req, res) => {
   const { token } = req.query;
-  if (!token) return res.status(400).send('<h3>Token não fornecido.</h3>');
-
+  if (!token) return res.status(400).send('Token inválido.');
   try {
-    const user = await User.findOne({ token });
-    if (!user) return res.send('<h3>Link inválido ou expirado.</h3>');
-
-    user.verificado = true;
-    await user.save();
-
-    res.send(`
-      <h3>Email confirmado com sucesso! 🎉</h3>
-      <p>Você já pode fazer login.</p>
-      <a href="https://caioolkk.github.io/semcensura-frontend/" style="color: #e91e63;">Voltar ao site</a>
-    `);
+    const snapshot = await db.collection('users').where('token', '==', token).get();
+    if (snapshot.empty) return res.send('Link expirado.');
+    await snapshot.docs[0].ref.update({ verificado: true, token: null });
+    res.send('<div style="text-align:center;padding:40px;"><h2 style="color:#4CAF50;">Email Confirmado! 🎉</h2></div>');
   } catch (err) {
-    console.error(err);
-    res.status(500).send('<h3>Erro ao confirmar email.</h3>');
+    res.status(500).send('Erro.');
   }
 });
 
-// Login
+// 🔐 Login
 app.post('/login', async (req, res) => {
   const { email, senha } = req.body;
-
   try {
-    const user = await User.findOne({ email });
-    if (!user) return res.status(401).json({ error: 'Email ou senha inválidos' });
-    if (!user.verificado) return res.status(403).json({ error: 'Email não verificado.' });
+    const snapshot = await db.collection('users').where('email', '==', email).limit(1).get();
+    if (snapshot.empty) return res.status(401).json({ error: 'Usuário não encontrado' });
+    const user = snapshot.docs[0].data();
+    if (!user.verificado) return res.status(403).json({ error: 'Email não verificado' });
     if (user.senha !== senha) return res.status(401).json({ error: 'Senha incorreta' });
-
-    res.json({ message: 'Login bem-sucedido', user: { email: user.email, nome: user.nome } });
+    res.json({ message: 'Login ok!', user: { nome: user.nome, email: user.email, telefone: user.telefone } });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: 'Erro no servidor.' });
   }
 });
 
-// Criar preferência do Mercado Pago
-app.post('/create_preference', async (req, res) => {
-  const { items, usuario, codigoIndicacao } = req.body;
+// ================== ROTAS DO PAINEL ADMIN ==================
 
-  if (!items || !usuario) {
-    return res.status(400).json({ error: 'Dados incompletos.' });
-  }
-
+// ➕ Adicionar Produto
+app.post('/api/admin/produtos', verifyAdmin, async (req, res) => {
+  const { nome, preco, descricao, imagem, categoria } = req.body;
+  if (!nome || !preco || !categoria || !imagem) return res.status(400).json({ error: 'Campos obrigatórios' });
+  
   try {
-    const pedido = new Pedido({
-      id: Date.now().toString(),
-      usuario,
-      itens: items,
-      codigoIndicacao: codigoIndicacao || 'sem código',
-      data: new Date().toISOString(),
-      status: 'pendente'
+    await db.collection('produtos').add({
+      nome,
+      preco: parseFloat(preco),
+      precoOriginal: parseFloat(preco) * 1.43,
+      descricao,
+      imagem,
+      categoria,
+      createdAt: new Date().toISOString()
     });
-    await pedido.save();
-
-    const preferenceData = {
-      items: items.map(item => ({
-        title: item.name,
-        quantity: item.quantity,
-        unit_price: parseFloat(item.price),
-        currency_id: 'BRL'
-      })),
-      payer: { email: usuario },
-      back_urls: {
-        success: 'https://caioolkk.github.io/semcensura-frontend/',
-        failure: 'https://caioolkk.github.io/semcensura-frontend/',
-        pending: 'https://caioolkk.github.io/semcensura-frontend/'
-      },
-      auto_return: 'approved',
-      binary_mode: true
-    };
-
-    const response = await axios.post('https://api.mercadopago.com/checkout/preferences', preferenceData, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}`
-      }
-    });
-
-    res.json({
-      id: response.data.id,
-      init_point: response.data.init_point
-    });
-  } catch (error) {
-    console.error('Erro no Mercado Pago:', error.response?.data || error.message);
-    res.status(500).json({ error: 'Erro ao processar pagamento.' });
-  }
+    res.json({ message: 'Produto adicionado!' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Rotas de admin (opcional)
+// ✏️ Editar Produto
+app.put('/api/admin/produtos/:id', verifyAdmin, async (req, res) => {
+  const { nome, preco, descricao, imagem, categoria } = req.body;
+  try {
+    await db.collection('produtos').doc(req.params.id).set({
+      nome,
+      preco: parseFloat(preco),
+      precoOriginal: parseFloat(preco) * 1.43,
+      descricao,
+      imagem,
+      categoria
+    }, { merge: true });
+    res.json({ message: 'Produto atualizado!' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 🗑️ Remover Produto
+app.delete('/api/admin/produtos/:id', verifyAdmin, async (req, res) => {
+  try {
+    await db.collection('produtos').doc(req.params.id).delete();
+    res.json({ message: 'Produto removido' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 👥 Listar Usuários
 app.get('/admin/usuarios', async (req, res) => {
-  const usuarios = await User.find();
-  res.json(usuarios);
+  try {
+    const snapshot = await db.collection('users').orderBy('createdAt', 'desc').get();
+    const users = snapshot.docs.map(doc => {
+      const data = doc.data(); delete data.senha; delete data.token; return data;
+    });
+    res.json(users);
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.get('/admin/pedidos', async (req, res) => {
-  const pedidos = await Pedido.find();
-  res.json(pedidos);
-});
-
+// ================== INICIALIZAÇÃO ==================
 app.listen(PORT, () => {
-  console.log(`✅ Servidor rodando em http://localhost:${PORT}`);
-  console.log(`🔗 Conectado ao MongoDB Atlas`);
-});
-// ================== WEBHOOK DO MERCADO PAGO ==================
-app.post('/webhook', async (req, res) => {
-  const { type, data } = req.body;
-
-  if (type === 'payment') {
-    try {
-      const payment = await axios.get(`https://api.mercadopago.com/v1/payments/${data.id}`, {
-        headers: { 'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}` }
-      });
-
-      const { status, external_reference: email } = payment.data;
-
-      // Atualiza o pedido no banco de dados
-      await Pedido.findOneAndUpdate(
-        { usuario: email },
-        { status: status === 'approved' ? 'aprovado' : status }
-      );
-
-      console.log(`✅ Pedido de ${email} atualizado para: ${status}`);
-    } catch (err) {
-      console.error('Erro ao processar webhook:', err.message);
-    }
-  }
-
-  res.status(200).send('OK');
+  console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
 });
