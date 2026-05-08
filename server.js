@@ -4,37 +4,39 @@ const cors = require('cors');
 const admin = require('firebase-admin');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ================== CONFIGURAÇÃO DO FIREBASE ==================
+// ================== INICIALIZAR FIREBASE ==================
 try {
-  // 1. Tenta usar a Variável de Ambiente (Funciona no Render)
+  let serviceAccount;
+  
+  // Tenta primeiro a variável de ambiente (Render)
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
-    console.log('🔥 Conectado ao Firebase (Render)');
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    console.log('🔥 Conectado ao Firebase (variável de ambiente - Render)');
   } else {
-    // 2. Se não tiver variável, tenta usar o arquivo local (Funciona no seu PC)
+    // Fallback para arquivo local (desenvolvimento)
+    const fs = require('fs');
+    const path = require('path');
     const serviceAccountPath = path.join(__dirname, 'firebase-key.json');
+    
     if (fs.existsSync(serviceAccountPath)) {
-      const serviceAccount = require(serviceAccountPath);
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-      });
-      console.log('🔥 Conectado ao Firebase (Local)');
+      serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+      console.log('🔥 Conectado ao Firebase (arquivo local)');
     } else {
-      console.error('❌ ERRO: Sem conexão com Firebase! Verifique a chave.');
-      process.exit(1);
+      throw new Error('Nenhuma configuração do Firebase encontrada');
     }
   }
+  
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+  
+  console.log('✅ Firebase inicializado com sucesso!');
 } catch (error) {
-  console.error('❌ Erro ao inicializar Firebase:', error);
+  console.error('❌ Erro ao inicializar Firebase:', error.message);
   process.exit(1);
 }
 
@@ -71,6 +73,7 @@ app.get('/api/produtos', async (req, res) => {
     const produtos = snapshot.docs.map(doc => ({ ...doc.data(), _id: doc.id }));
     res.json(produtos);
   } catch (err) {
+    console.error('Erro ao buscar produtos:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -82,7 +85,6 @@ app.post('/register', async (req, res) => {
   try {
     const snapshot = await db.collection('users').where('email', '==', email).get();
     if (!snapshot.empty) return res.status(400).json({ error: 'Email já cadastrado' });
-
     const token = crypto.randomBytes(32).toString('hex');
 
     await db.collection('users').add({
@@ -195,4 +197,5 @@ app.get('/admin/usuarios', async (req, res) => {
 // ================== INICIALIZAÇÃO ==================
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
+  console.log(`🔗 Backend URL: https://semcensura-loja.onrender.com`);
 });
