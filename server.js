@@ -10,22 +10,31 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ================== INICIALIZAR FIREBASE ==================
+// ================== CONFIGURAÇÃO DO FIREBASE ==================
 try {
-  const serviceAccountPath = path.join(__dirname, 'firebase-key.json');
-  
-  if (fs.existsSync(serviceAccountPath)) {
-    const serviceAccount = require(serviceAccountPath);
+  // 1. Tenta usar a Variável de Ambiente (Funciona no Render)
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount)
     });
-    console.log('🔥 Conectado ao Firebase Firestore!');
+    console.log('🔥 Conectado ao Firebase (Render)');
   } else {
-    console.error('❌ ERRO: firebase-key.json não encontrado!');
-    process.exit(1);
+    // 2. Se não tiver variável, tenta usar o arquivo local (Funciona no seu PC)
+    const serviceAccountPath = path.join(__dirname, 'firebase-key.json');
+    if (fs.existsSync(serviceAccountPath)) {
+      const serviceAccount = require(serviceAccountPath);
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+      });
+      console.log('🔥 Conectado ao Firebase (Local)');
+    } else {
+      console.error('❌ ERRO: Sem conexão com Firebase! Verifique a chave.');
+      process.exit(1);
+    }
   }
 } catch (error) {
-  console.error('❌ Erro Firebase:', error);
+  console.error('❌ Erro ao inicializar Firebase:', error);
   process.exit(1);
 }
 
@@ -55,7 +64,6 @@ const verifyAdmin = (req, res, next) => {
 };
 
 // ================== ROTAS PÚBLICAS ==================
-
 // 🛍️ Listar Produtos
 app.get('/api/produtos', async (req, res) => {
   try {
@@ -71,13 +79,12 @@ app.get('/api/produtos', async (req, res) => {
 app.post('/register', async (req, res) => {
   const { nome, email, telefone, senha } = req.body;
   if (!nome || !email || !senha) return res.status(400).json({ error: 'Preencha tudo.' });
-  
   try {
     const snapshot = await db.collection('users').where('email', '==', email).get();
     if (!snapshot.empty) return res.status(400).json({ error: 'Email já cadastrado' });
 
     const token = crypto.randomBytes(32).toString('hex');
-    
+
     await db.collection('users').add({
       nome, email, telefone, senha, token,
       verificado: false,
@@ -132,12 +139,10 @@ app.post('/login', async (req, res) => {
 });
 
 // ================== ROTAS DO PAINEL ADMIN ==================
-
 // ➕ Adicionar Produto
 app.post('/api/admin/produtos', verifyAdmin, async (req, res) => {
   const { nome, preco, descricao, imagem, categoria } = req.body;
   if (!nome || !preco || !categoria || !imagem) return res.status(400).json({ error: 'Campos obrigatórios' });
-  
   try {
     await db.collection('produtos').add({
       nome,
